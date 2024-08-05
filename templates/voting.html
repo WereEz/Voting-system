@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style/voting.css') }}">
+</head>
+
+<body>
+    <div class="container">
+        {% if admin %}
+        <a href="/admin" class="create-vote-link">Создать голосование</a>
+        {% endif %}
+        <h2>Текущие голосования</h2>
+        {% for vote in votes %}
+        {% if not vote.isEnded %}
+        <div class="vote">
+            <h2>{{ vote.question }}</h2>
+            <p>Закончится через: <span id="countdown-{{ vote.id }}"></span></p>
+            <p>Минимальное число участников: {{ vote.minVotes}}</p>
+            <form class="voteForm" data-vote-id="{{ vote.id }}">
+                <div class="options">
+                    {% for option in vote.options %}
+                    <label>
+                        <input type="radio" name="option{{ vote.id }}" value="{{ loop.index0 }}">
+                        {{ option.option }} голосов: {{ option.votes }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <button type="button" onclick="submitVote({{ vote.id }})">Vote</button>
+            </form>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <h2>Завершенные голосования</h2>
+        {% for vote in votes %}
+        {% if vote.isEnded %}
+        <div class="vote">
+            <h2>{{ vote.question }}</h2>
+            <p>Закончилось: {{ vote.endTime | timestamp_to_string }}</p>
+            <p>Минимальное число участников: {{ vote.minVotes}}</p>
+            <div class="options">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Вариант</th>
+                            <th>Число голосов</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for option in vote.options %}
+                        <tr>
+                            <td>{{ option.option }}</td>
+                            <td>{{ option.votes }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p><strong>Победитель: {{ vote.winner }}</strong></p>
+            <p>{{ vote | get_total_votes | safe }}</p>
+
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.3/dist/web3.min.js"></script>
+    <script>
+        // Countdown Timer
+        function updateCountdown(endTime, elementId) {
+            const countdownElement = document.getElementById(elementId);
+            if (!countdownElement) return;
+
+            function update() {
+                const now = new Date().getTime();
+                const distance = endTime * 1000 - now;
+
+                if (distance <= 0) {
+                    countdownElement.innerHTML = 'Голосование завершено';
+                    // Reload the page when countdown reaches zero
+                    window.location.reload();
+                } else {
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                    countdownElement.innerHTML = `${days} дней ${hours} часов ${minutes} минут ${seconds} секунд`;
+                }
+            }
+
+            update();
+            setInterval(update, 1000);
+        }
+
+        // Initialize countdown for each vote
+        document.addEventListener("DOMContentLoaded", function (event) {
+            {% for vote in votes %}
+            {% if not vote.isEnded %}
+            hasVoted = localStorage.getItem(`voted_{{ vote.id }}`);
+            console.log(hasVoted)
+            if (hasVoted) {
+                const form = document.querySelector(`.voteForm[data-vote-id='{{ vote.id }}']`);
+                console.log(form.querySelector('button'))
+                const voteButton = form.querySelector('button');
+                if (voteButton) {
+                // Заменяем кнопку на текстовое сообщение
+                const messageElement = document.createElement('p');
+                messageElement.textContent = 'Вы уже проголосовали';
+                form.appendChild(messageElement);
+
+                // Удаляем кнопку
+                form.removeChild(voteButton);
+            }
+            }
+            updateCountdown({{ vote.endTime }}, "countdown-{{ vote.id }}");
+            {% endif %}
+            {% endfor %}
+});
+        // MetaMask setup and vote submission function
+        if (typeof window.ethereum !== 'undefined') {
+            console.log('MetaMask is available!');
+            window.web3 = new Web3(window.ethereum);
+            window.ethereum.request({ method: 'eth_requestAccounts' });
+        } else {
+            alert('MetaMask is not available. Please install MetaMask to use this feature.');
+        }
+
+        async function submitVote(voteId) {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    const currentAccount = accounts[0];
+                    console.log('Current MetaMask account:', currentAccount);
+
+                    const form = document.querySelector(`.voteForm[data-vote-id='${voteId}']`);
+                    console.log('Form found:', form);
+
+                    if (!form) {
+                        alert('Form not found for vote ID ' + voteId);
+                        return;
+                    }
+
+                    const selectedOption = form.querySelector(`input[name="option${voteId}"]:checked`);
+
+                    if (!selectedOption) {
+                        alert('Please select an option before voting.');
+                        return;
+                    }
+
+                    const optionIndex = selectedOption.value;
+
+                    const contractABI = await fetch('/static/VotingABI.json').then(response => response.json());
+                    const contractAddress = '0x2a0E8e208A7c8C2921CCcFD5f4B339c1953C9197';
+
+                    const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+                    const tx = await contract.methods.vote(voteId, optionIndex).send({
+                        from: currentAccount,
+                        gas: 3000000,
+                        gasPrice: '30000000000'
+                    });
+
+                    console.log('Transaction hash:', tx.transactionHash);
+                    alert('Vote submitted successfully.');
+                    localStorage.setItem(`voted_${voteId}`, 'true');
+                    form.querySelector('button').setAttribute('disabled', 'true');
+                } catch (error) {
+                    console.error('Error submitting vote:', error);
+                    alert('Failed to submit vote. Please check MetaMask and try again.');
+                }
+            } else {
+                alert('MetaMask is not available. Please install MetaMask to use this feature.');
+            }
+        }
+    </script>
+
+</body>
+
+</html>

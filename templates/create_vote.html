@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать голосование</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style/create_vote.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Создать голосование</h1>
+        <form id="createVoteForm">
+            <label for="question">Вопрос</label>
+            <input type="text" id="question" name="question" required>
+
+            <label for="options">Варианты (через запятую)</label>
+            <input type="text" id="options" name="options" required>
+
+            <label for="endTime">Время окончания</label>
+            <input type="datetime-local" id="endTime" name="endTime" required>
+
+            <label for="min_votes">Минимальное число голосов для валидного результата</label>
+            <input type="number" id="min_votes" name="min_votes" required>
+
+            <button type="button" onclick="createTransaction()">Создать голосование</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.3/dist/web3.min.js"></script>
+    <script>
+        // Check MetaMask availability
+        if (typeof window.ethereum !== 'undefined') {
+            console.log('MetaMask is available!');
+            window.web3 = new Web3(window.ethereum);
+            window.ethereum.request({ method: 'eth_requestAccounts' });
+        } else {
+            alert('MetaMask is not available. Please install MetaMask to use this feature.');
+        }
+
+        async function createTransaction() {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    const currentAccount = accounts[0];
+                    console.log('Current MetaMask account:', currentAccount);
+
+                    const question = document.getElementById('question').value;
+                    const options = document.getElementById('options').value.split(',');
+                    const endTime = new Date(document.getElementById('endTime').value).getTime() / 1000; // Convert to seconds
+                    const minVotes = document.getElementById('min_votes').value;
+
+                    // Load contract ABI
+                    const contractABI = await fetch('/static/VotingABI.json').then(response => response.json());
+
+                    // Contract address
+                    const contractAddress = '0x2a0E8e208A7c8C2921CCcFD5f4B339c1953C9197';
+
+                    // Create contract instance
+                    const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+                    // Call createVote function
+                    const tx = await contract.methods.createVote(question, options, endTime, minVotes).send({
+                        from: currentAccount,
+                        gas: 3000000,
+                        gasPrice: '30000000000'
+                    });
+
+                    console.log('Transaction hash:', tx.transactionHash);
+
+                    // Handle successful vote creation
+                    alert('Vote created successfully.');
+                    window.location.href = "/voting";
+                } catch (error) {
+                    console.error('Error creating vote:', error);
+                    alert('Failed to create vote. Please check MetaMask and try again.');
+                }
+            } else {
+                alert('MetaMask is not available. Please install MetaMask to use this feature.');
+            }
+        }
+    </script>
+</body>
+</html>

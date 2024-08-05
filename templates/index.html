@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect MetaMask</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style/index.css') }}">
+</head>
+<body>
+    <div class="container">
+        <img src="{{ url_for('static', filename='icon/metamask-icon.svg') }}" class="icon">
+        <h1>Connect MetaMask</h1>
+        <p>Please connect your MetaMask wallet to proceed.</p>
+        <button id="connect-button" onclick="connectMetaMask()">Connect MetaMask</button>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        connectMetaMask();
+    });
+
+    async function connectMetaMask() {
+        if (window.ethereum) {
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accounts.length > 0) {
+                    const currentAccount = accounts[0];
+                    console.log('Current MetaMask account:', currentAccount);
+
+                    // Отправляем текущий аккаунт на сервер (бэкенд)
+                    const response = await fetch('/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ currentAccount: currentAccount })
+                    });
+
+                    if (response.ok) {
+                        console.log('Successfully sent current account to server.');
+                        // Перенаправляем пользователя на страницу голосования
+                        window.location.href = "/voting";
+                    } else {
+                        console.error('Failed to send current account to server.');
+                    }
+                } else {
+                    // MetaMask подключен, но аккаунт не доступен
+                    alert('No MetaMask account available.');
+                }
+            } catch (error) {
+                console.error('Error connecting MetaMask:', error);
+                alert('Please allow access to MetaMask to proceed.');
+            }
+        } else {
+            alert('MetaMask extension not detected! Please install MetaMask to proceed.');
+        }
+    }
+    </script>
+</body>
+</html>

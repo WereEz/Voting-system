@@ -1,0 +1,91 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f2f2f2;
+}
+
+.container {
+    max-width: 800px;
+    margin: auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    text-align: center;
+    color: #333;
+}
+
+.vote {
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.vote h2 {
+    margin: 0;
+    color: #555;
+}
+
+.vote p {
+    margin: 5px 0;
+    color: #777;
+}
+
+.options {
+    margin: 10px 0;
+}
+
+.options label {
+    display: block;
+    margin: 5px 0;
+    color: #333;
+}
+
+button {
+    padding: 10px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+table th,
+table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+table th {
+    background-color: #f2f2f2;
+    color: #333;
+}
+
+table td {
+    color: #555;
+}
+.create-vote-link {
+    display: block;
+    text-align: center;
+    margin-bottom: 20px;
+    text-decoration: none;
+    color: #3498db;
+}
